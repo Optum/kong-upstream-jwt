@@ -1,0 +1,25 @@
+Kong Upstream JWT Plugin
+Copyright 2018 Optum
+
+Project Description:
+====================
+
+The Kong Upstream JWT Plugin is a small, lua-based, Openrestly nginx module which injects a signed JWT header to into proxied requests’ HTTP headers. The purpose of this JWT is to provide API providers (backend APIs) with a means of cryptographically ensuring the requests they received have gone through a Kong API Gateway’s secure proxy; and were not issued or tampered with by a potentially malicious 3rd party.
+
+
+
+Authors:
+Ross Sbriscia, ©Optum 2018
+
+
+Added Files:
+============
+
+
+
+
+
+
+
+Modified Files:
+===============
