@@ -22,18 +22,6 @@ local function b64_encode(input)
   return result
 end
 
-local function encode_token(data, key)
-  local header = {typ = "JWT", alg = "RS256", x5c = [b64_encode(getKongKey("pubder",public_key_der_location))]}
-  local segments = {
-    b64_encode(json.encode(header)),
-    b64_encode(json.encode(data))
-  }
-  local signing_input = table_concat(segments, ".")
-  local signature = openssl_pkey.new(key):sign(openssl_digest.new("sha256"):update(signing_input))
-  segments[#segments+1] = b64_encode(signature)
-  return table_concat(segments, ".")
-end
-
 local function readFromFile(file_location)
   local content, err = pl_file.read(file_location)
   if not content then
@@ -55,6 +43,18 @@ local function getKongKey(key, location)
   end
 	
   return pkey
+end
+
+local function encode_token(data, key)
+  local header = {typ = "JWT", alg = "RS256", x5c = {b64_encode(getKongKey("pubder",public_key_der_location))} }
+  local segments = {
+    b64_encode(json.encode(header)),
+    b64_encode(json.encode(data))
+  }
+  local signing_input = table_concat(segments, ".")
+  local signature = openssl_pkey.new(key):sign(openssl_digest.new("sha256"):update(signing_input))
+  segments[#segments+1] = b64_encode(signature)
+  return table_concat(segments, ".")
 end
 
 local function add_jwt_header(conf)
