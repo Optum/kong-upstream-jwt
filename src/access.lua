@@ -2,6 +2,7 @@
 local resty_sha256 = require "resty.sha256"
 local str = require "resty.string"
 local singletons = require "kong.singletons"
+local public_key_der_location =  os.getenv("KONG_SSL_CERT_DER")
 local private_key_location =  os.getenv("KONG_SSL_CERT_KEY")
 local pl_file = require "pl.file"
 local json = require "cjson"
@@ -22,7 +23,7 @@ local function b64_encode(input)
 end
 
 local function encode_token(data, key)
-  local header = {typ = "JWT", alg = "RS256"}
+  local header = {typ = "JWT", alg = "RS256", x5c = [b64_encode(getKongKey("pubder",public_key_der_location))]}
   local segments = {
     b64_encode(json.encode(header)),
     b64_encode(json.encode(data))
@@ -43,10 +44,10 @@ local function readFromFile(file_location)
   return content
 end
 
-local function getKongPkey()
+local function getKongKey(key, location)
   -- This will add a non expiring TTL on this cached value
   -- https://github.com/thibaultcha/lua-resty-mlcache/blob/master/README.md
-  local pkey, err = singletons.cache:get("pkey", { ttl = 0 }, readFromFile, private_key_location)
+  local pkey, err = singletons.cache:get(key, { ttl = 0 }, readFromFile, location)
 	
   if err then
     ngx.log(ngx.ERR, "Could not retrieve pkey: ", err)
@@ -57,7 +58,7 @@ local function getKongPkey()
 end
 
 local function add_jwt_header(conf)
-  local kong_pkey = getKongPkey()
+  local kong_pkey = getKongKey("pkey", private_key_location)
   ngx.req.read_body()
   local req_body  = ngx.req.get_body_data()
   local digest_created = ""
