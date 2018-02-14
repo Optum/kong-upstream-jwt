@@ -22,16 +22,18 @@ $ luarocks make *.rockspec
 ```
 
 ## Configuration
-The plugin requires that Kong's private key be accessible in order to sign the JWT. We access this via Kong's overriding environment variable `KONG_SSL_CERT_KEY`. This is the  environment variable can be set as either a windows or Linux environment variable and must contain the path to your .key file. It is used by Kong to override the contents of Kong's config file, if your path is also set there.
+The plugin requires that Kong's private key be accessible in order to sign the JWT. [We also include the x509 cert in the `x5c` JWT Header for use by API providers to validate the JWT](https://tools.ietf.org/html/rfc7515#section-4.1.6). We access these via Kong's overriding environment variables `KONG_SSL_CERT_KEY` for the private key as well as `KONG_SSL_CERT_DER` for the public key. The first contains the path to your .key file, the second specifies the path to your public key in DER format .cer file.
 
-If not already set, it can be done so as follows:
+If not already set, these can be done so as follows:
 ```
-$ export KONG_SSL_CERT_KEY="/path/to/kong/private/key.key"
+$ export KONG_SSL_CERT_KEY="/path/to/kong/ssl/privatekey.key"
+$ export KONG_SSL_CERT_DER="/path/to/kong/ssl/kongpublickey.cer"
 ```
 
-**One last step** is to make the environment variable accessible by an nginx worker. To do this, simply add this line to your _nginx.conf_
+**One last step** is to make the environment variables accessible by an nginx worker. To do this, simply add these line to your _nginx.conf_
 ```
 env KONG_SSL_CERT_KEY;
+env KONG_SSL_CERT_DER;
 ```
 
 
