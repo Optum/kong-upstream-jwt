@@ -14,7 +14,7 @@ function KongUpstreamJWTHandler:access(conf)
 end
 
 -- Set a low priority, because 'AUTH' plugins run with priority 1000, and we don't want to strip the Authorization header before the request reaches OAuth
-KongUpstreamJWTHandler.PRIORITY = 900
+KongUpstreamJWTHandler.PRIORITY = 2500
 KongUpstreamJWTHandler.VERSION = "0.1.0"
 
 return KongUpstreamJWTHandler
