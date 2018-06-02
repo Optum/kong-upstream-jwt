@@ -37,4 +37,4 @@ env KONG_SSL_CERT_DER;
 ```
 
 
-Feel free to open issues, or refer to our Contribution Guidelines if you have any questions.
+Feel free to open issues, or refer to our [Contribution Guidelines] (https://github.com/Optum/kong-upstream-jwt/blob/master/CONTRIBUTING.md) if you have any questions.
