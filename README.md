@@ -36,5 +36,8 @@ env KONG_SSL_CERT_KEY;
 env KONG_SSL_CERT_DER;
 ```
 
+## Maintainers
+[jeremyjpj0916](https://github.com/jeremyjpj0916)  
+[rsbrisci](https://github.com/rsbrisci)  
 
 Feel free to open issues, or refer to our [Contribution Guidelines](https://github.com/Optum/kong-upstream-jwt/blob/master/CONTRIBUTING.md) if you have any questions.
