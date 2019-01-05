@@ -6,7 +6,6 @@ local public_key_der_location =  os.getenv("KONG_SSL_CERT_DER")
 local private_key_location =  os.getenv("KONG_SSL_CERT_KEY")
 local pl_file = require "pl.file"
 local json = require "cjson"
-local utils = require "kong.tools.utils"
 local openssl_digest = require "openssl.digest"
 local openssl_pkey = require "openssl.pkey"
 local table_concat = table.concat
