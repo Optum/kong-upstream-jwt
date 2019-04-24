@@ -4,6 +4,7 @@ local str = require "resty.string"
 local singletons = require "kong.singletons"
 local public_key_der_location =  os.getenv("KONG_SSL_CERT_DER")
 local private_key_location =  os.getenv("KONG_SSL_CERT_KEY")
+local jwt_issuer =  os.getenv("KONG_JWT_ISSUER")
 local pl_file = require "pl.file"
 local json = require "cjson"
 local openssl_digest = require "openssl.digest"
@@ -45,7 +46,13 @@ local function getKongKey(key, location)
 end
 
 local function encode_token(data, key)
-  local header = {typ = "JWT", alg = "RS256", x5c = {b64_encode(getKongKey("pubder",public_key_der_location))} }
+  local header = {
+    typ = "JWT",
+    alg = "RS256",
+    x5c = {
+      b64_encode(getKongKey("pubder",public_key_der_location))
+    }
+  }
   local segments = {
     b64_encode(json.encode(header)),
     b64_encode(json.encode(data))
@@ -68,9 +75,17 @@ local function add_jwt_header(conf)
   end
 
   local payload = {
-        payloadhash = str.to_hex(digest_created),
-	exp = ngx.time() + 60 --much better performance improvement over os.time()
+    sub = ngx.req.get_header("X-Consumer-ID"), -- TODO: Is this correct?
+    iat = ngx.time(),
+    exp = ngx.time() + 60, --much better performance improvement over os.time()
+    cid = ngx.req.get_header("X-Consumer-ID"), -- TODO: Is this correct?
+    cun = ngx.req.get_header("X-Consumer-Username"), -- TODO: Is this correct?
+    payloadhash = str.to_hex(digest_created)
   }
+
+  if not jwt_issuer then
+    payload.iss = jwt_issuer
+  end
 		
   local jwt = encode_token(payload, kong_pkey)
   ngx.req.set_header("JWT", jwt)

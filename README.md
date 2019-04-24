@@ -21,6 +21,31 @@ $ cd /path/to/kong/plugins/kong-upstream-jwt
 $ luarocks make *.rockspec
 ```
 
+## JWT Token
+The following is an example of the contents of the decoded JWT token:
+
+**Header:**
+```json
+{
+  "x5c": ["...der-encoded cert data..."],
+  "alg": "RS256",
+  "typ": "JWT"
+}
+```
+
+**Payload:**
+```json
+{
+  "sub": "",
+  "iss": "issuer", // Only set if KONG_JWT_ISSUER env variable available
+  "iat": 1550258274,
+  "exp": 1550258334, // 1 minute exp time,
+  "cid": "consumer-id",
+  "cun": "consumer-username",
+  "payloadhash": "...sha256 hash of request paload..."
+}
+```
+
 ## Configuration
 The plugin requires that Kong's private key be accessible in order to sign the JWT. [We also include the x509 cert in the `x5c` JWT Header for use by API providers to validate the JWT](https://tools.ietf.org/html/rfc7515#section-4.1.6). We access these via Kong's overriding environment variables `KONG_SSL_CERT_KEY` for the private key as well as `KONG_SSL_CERT_DER` for the public key. The first contains the path to your .key file, the second specifies the path to your public key in DER format .cer file.
 
@@ -34,6 +59,19 @@ $ export KONG_SSL_CERT_DER="/path/to/kong/ssl/kongpublickey.cer"
 ```
 env KONG_SSL_CERT_KEY;
 env KONG_SSL_CERT_DER;
+```
+
+### JWT Issuer
+JWT Issuer allows for the `iss` field to be set within the `JWT` token.
+
+If not already set, these can be done so as follows:
+```
+$ export KONG_JWT_ISSUER="issuer"
+```
+
+To make the environment variable accessible, add the following to _nginx.conf_:
+```
+env KONG_JWT_ISSUER;
 ```
 
 ## Maintainers
