@@ -41,15 +41,28 @@ The following is an example of the contents of the decoded JWT token:
   "iss": "issuer", // Only set if KONG_JWT_ISSUER env variable available
   "iat": 1550258274, // Only set if KONG_JWT_ISSUER env variable available
   "exp": 1550258334, // 1 minute exp time,
+  "jti": "d4f10edb-c4f0-47d3-b7e0-90a30a885a0b", // Unique to every request - UUID
   "username": "consumer-username", // Consumer USername
   "payloadhash": "...sha256 hash of request payload..."
 }
 ```
 
 ## Configuration
-The plugin requires that Kong's private key be accessible in order to sign the JWT. [We also include the x509 cert in the `x5c` JWT Header for use by API providers to validate the JWT](https://tools.ietf.org/html/rfc7515#section-4.1.6). We access these via Kong's overriding environment variables `KONG_SSL_CERT_KEY` for the private key as well as `KONG_SSL_CERT_DER` for the public key. The first contains the path to your .key file, the second specifies the path to your public key in DER format .cer file.
 
-If not already set, these can be done so as follows:
+### Private and Public Keys
+The plugin requires that Kong's private key be accessible in order to sign the JWT. [We also include the x509 cert in the `x5c` JWT Header for use by API providers to validate the JWT](https://tools.ietf.org/html/rfc7515#section-4.1.6).
+
+**Add the following to _nginx.conf_:**
+```
+private_key_location = "/path/to/kong/ssl/privatekey.key"
+public_key_location = "/path/to/kong/ssl/kongpublickey.cer"
+```
+The first contains the path to your .key file, the second specifies the path to your public key in DER format .cer file.
+
+#### Backwards Compatibility
+To maintain backwards compatibility, support for passing the key locations through environment variables is also available.  We access these via Kong's overriding environment variables `KONG_SSL_CERT_KEY` for the private key as well as `KONG_SSL_CERT_DER` for the public key.
+
+**If not already set, these can be done so as follows:**
 ```
 $ export KONG_SSL_CERT_KEY="/path/to/kong/ssl/privatekey.key"
 $ export KONG_SSL_CERT_DER="/path/to/kong/ssl/kongpublickey.cer"
@@ -64,27 +77,17 @@ env KONG_SSL_CERT_DER;
 ### JWT Issuer
 [JWT Issuer](https://tools.ietf.org/html/rfc7519#section-4.1.1) allows for the `iss` field to be set within the `JWT` token.
 
-If not already set, these can be done so as follows:
+**Add the following to _nginx.conf_:**
 ```
-$ export KONG_JWT_ISSUER="issuer"
-```
-
-To make the environment variable accessible, add the following to _nginx.conf_:
-```
-env KONG_JWT_ISSUER;
+jwt_issuer = "issuer"
 ```
 
 ### JWT Audience
 [JWT Audience](https://tools.ietf.org/html/rfc7519#section-4.1.3) allows for the `aud` field to be set within the `JWT` token.
 
-If not already set, these can be done so as follows:
+**Add the following to _nginx.conf_:**
 ```
-$ export KONG_JWT_AUDIENCE="audience"
-```
-
-To make the environment variable accessible, add the following to _nginx.conf_:
-```
-env KONG_JWT_AUDIENCE;
+jwt_audience = "audience"
 ```
 
 More information about JWT claims can be found [here](https://tools.ietf.org/html/rfc7519#section-4)

@@ -2,17 +2,36 @@
 local resty_sha256 = require "resty.sha256"
 local str = require "resty.string"
 local singletons = require "kong.singletons"
-local public_key_der_location =  os.getenv("KONG_SSL_CERT_DER")
-local private_key_location =  os.getenv("KONG_SSL_CERT_KEY")
-local jwt_issuer =  os.getenv("KONG_JWT_ISSUER")
-local jwt_audience =  os.getenv("KONG_JWT_AUDIENCE")
 local pl_file = require "pl.file"
 local json = require "cjson"
 local openssl_digest = require "openssl.digest"
 local openssl_pkey = require "openssl.pkey"
 local table_concat = table.concat
 local encode_base64 = ngx.encode_base64
+local utils = require "kong.tools.utils"
 local _M = {}
+
+--- Get the private key location either from the environment or from configuration
+-- @param conf the kong configuration
+-- @return the private key location
+local function get_private_key_location(conf)
+  local location = os.getenv("KONG_SSL_CERT_KEY")
+  if location ~= nil then
+    return location
+  end
+  return conf.private_key_location
+end
+
+--- Get the public key location either from the environment or from configuration
+-- @param conf the kong configuration
+-- @return the public key location
+local function get_public_key_location(conf)
+  local location = os.getenv("KONG_SSL_CERT_DER")
+  if location ~= nil then
+    return location
+  end
+  return conf.public_key_location
+end
 
 --- base 64 encoding
 -- @param input String to base64 encode
@@ -23,7 +42,7 @@ local function b64_encode(input)
   return result
 end
 
---- Read contents of file from given `file_location`
+--- Read contents of file from given location
 -- @param file_location the file location
 -- @return the file contents
 local function read_from_file(file_location)
@@ -56,12 +75,12 @@ end
 -- @param payload the payload of the token
 -- @param key the key to sign the token with
 -- @return the encoded JWT token
-local function encode_jwt_token(payload, key)
+local function encode_jwt_token(conf, payload, key)
   local header = {
     typ = "JWT",
     alg = "RS256",
     x5c = {
-      b64_encode(get_kong_key("pubder",public_key_der_location))
+      b64_encode(get_kong_key("pubder", get_public_key_location(conf)))
     }
   }
   local segments = {
@@ -75,36 +94,36 @@ local function encode_jwt_token(payload, key)
 end
 
 --- Build the JWT token payload based off the `payload_hash`
+-- @param conf the configuration
 -- @param payload_hash the payload hash
 -- @return the JWT payload (table)
-local function build_jwt_payload(payload_hash)
-  local current_time = ngx.time() -- much better performance improvement over os.time()
+local function build_jwt_payload(conf, payload_hash)
+  local current_time = ngx.time() -- Much better performance improvement over os.time()
   local payload = {
     exp = current_time + 60,
+    jti = utils.uuid(),
     payloadhash = payload_hash
   }
 
-  if jwt_issuer ~= nil then
+  if conf.issuer ~= nil then
     payload.iat = current_time
-    payload.iss = jwt_issuer
+    payload.iss = conf.issuer
   end
 
-  if jwt_audience ~= nil then
-    payload.aud = jwt_audience
+  if conf.audience ~= nil then
+    payload.aud = conf.audience
   end
 
-  -- no need to go any further if we don't have an `authenticated_consumer`
-  if ngx.ctx.authenticated_consumer == nil then
+  local consumer = kong.client.get_consumer()
+
+  -- No need to proceed any further if we don't have a consumer
+  -- This is the case if we are not yet authenticated, or there is no consumer (external auth)
+  if consumer == nil then
     return payload
   end
 
-  if ngx.ctx.authenticated_consumer.id ~= nil then
-    payload.sub = ngx.ctx.authenticated_consumer.id
-  end
-
-  if ngx.ctx.authenticated_consumer.username ~= nil then
-    payload.username = ngx.ctx.authenticated_consumer.username
-  end
+  payload.sub = consumer.id
+  payload.username = consumer.username
 
   return payload
 end
@@ -127,12 +146,14 @@ end
 -- @param conf the configuration
 local function add_jwt_header(conf)
   local payload_hash = build_payload_hash()
-  local payload = build_jwt_payload(payload_hash)
-  local kong_pkey = get_kong_key("pkey", private_key_location)
-  local jwt = encode_jwt_token(payload, kong_pkey)
+  local payload = build_jwt_payload(conf, payload_hash)
+  local kong_private_key = get_kong_key("pkey", get_private_key_location(conf))
+  local jwt = encode_jwt_token(conf, payload, kong_private_key)
   ngx.req.set_header("JWT", jwt)
 end
 
+--- Execute the script
+-- @param conf kong configuration
 function _M.execute(conf)
   add_jwt_header(conf)
 end
