@@ -5,6 +5,7 @@ local singletons = require "kong.singletons"
 local public_key_der_location =  os.getenv("KONG_SSL_CERT_DER")
 local private_key_location =  os.getenv("KONG_SSL_CERT_KEY")
 local jwt_issuer =  os.getenv("KONG_JWT_ISSUER")
+local jwt_audience =  os.getenv("KONG_JWT_AUDIENCE")
 local pl_file = require "pl.file"
 local json = require "cjson"
 local openssl_digest = require "openssl.digest"
@@ -22,20 +23,26 @@ local function b64_encode(input)
   return result
 end
 
-local function readFromFile(file_location)
+--- Read contents of file from given `file_location`
+-- @param file_location the file location
+-- @return the file contents
+local function read_from_file(file_location)
   local content, err = pl_file.read(file_location)
   if not content then
     ngx.log(ngx.ERR, "Could not read file contents", err)
     return nil, err
   end
-
   return content
 end
 
-local function getKongKey(key, location)
+--- Get the Kong key either from cache or the given `location`
+-- @param key the cache key to lookup first
+-- @param location the location of the key file
+-- @return the key contents
+local function get_kong_key(key, location)
   -- This will add a non expiring TTL on this cached value
   -- https://github.com/thibaultcha/lua-resty-mlcache/blob/master/README.md
-  local pkey, err = singletons.cache:get(key, { ttl = 0 }, readFromFile, location)
+  local pkey, err = singletons.cache:get(key, { ttl = 0 }, read_from_file, location)
 	
   if err then
     ngx.log(ngx.ERR, "Could not retrieve pkey: ", err)
@@ -45,17 +52,21 @@ local function getKongKey(key, location)
   return pkey
 end
 
-local function encode_token(data, key)
+--- Base64 encode the JWT token
+-- @param payload the payload of the token
+-- @param key the key to sign the token with
+-- @return the encoded JWT token
+local function encode_jwt_token(payload, key)
   local header = {
     typ = "JWT",
     alg = "RS256",
     x5c = {
-      b64_encode(getKongKey("pubder",public_key_der_location))
+      b64_encode(get_kong_key("pubder",public_key_der_location))
     }
   }
   local segments = {
     b64_encode(json.encode(header)),
-    b64_encode(json.encode(data))
+    b64_encode(json.encode(payload))
   }
   local signing_input = table_concat(segments, ".")
   local signature = openssl_pkey.new(key):sign(openssl_digest.new("sha256"):update(signing_input))
@@ -63,31 +74,62 @@ local function encode_token(data, key)
   return table_concat(segments, ".")
 end
 
-local function add_jwt_header(conf)
-  local kong_pkey = getKongKey("pkey", private_key_location)
+--- Build the JWT token payload based off the `payload_hash`
+-- @param payload_hash the payload hash
+-- @return the JWT payload (table)
+local function build_jwt_payload(payload_hash)
+  local current_time = ngx.time() -- much better performance improvement over os.time()
+  local payload = {
+    exp = current_time + 60,
+    payloadhash = payload_hash
+  }
+
+  if jwt_issuer ~= nil then
+    payload.iat = current_time
+    payload.iss = jwt_issuer
+  end
+
+  if jwt_audience ~= nil then
+    payload.aud = jwt_audience
+  end
+
+  -- no need to go any further if we don't have an `authenticated_consumer`
+  if ngx.ctx.authenticated_consumer == nil then
+    return payload
+  end
+
+  if ngx.ctx.authenticated_consumer.id ~= nil then
+    payload.sub = ngx.ctx.authenticated_consumer.id
+  end
+
+  if ngx.ctx.authenticated_consumer.username ~= nil then
+    payload.username = ngx.ctx.authenticated_consumer.username
+  end
+
+  return payload
+end
+
+--- Build the payload hash
+-- @return SHA-256 hash of the request body data
+local function build_payload_hash()
   ngx.req.read_body()
   local req_body  = ngx.req.get_body_data()
-  local digest_created = ""
+  local payload_digest = ""
   if req_body ~= nil then
     local sha256 = resty_sha256:new()
     sha256:update(req_body)
-    digest_created = sha256:final()
+    payload_digest = sha256:final()
   end
+  return str.to_hex(payload_digest)
+end
 
-  local payload = {
-    sub = ngx.req.get_header("X-Consumer-ID"), -- TODO: Is this correct?
-    iat = ngx.time(),
-    exp = ngx.time() + 60, --much better performance improvement over os.time()
-    cid = ngx.req.get_header("X-Consumer-ID"), -- TODO: Is this correct?
-    cun = ngx.req.get_header("X-Consumer-Username"), -- TODO: Is this correct?
-    payloadhash = str.to_hex(digest_created)
-  }
-
-  if not jwt_issuer then
-    payload.iss = jwt_issuer
-  end
-		
-  local jwt = encode_token(payload, kong_pkey)
+--- Add the JWT header to the reqeust
+-- @param conf the configuration
+local function add_jwt_header(conf)
+  local payload_hash = build_payload_hash()
+  local payload = build_jwt_payload(payload_hash)
+  local kong_pkey = get_kong_key("pkey", private_key_location)
+  local jwt = encode_jwt_token(payload, kong_pkey)
   ngx.req.set_header("JWT", jwt)
 end
 

@@ -36,13 +36,13 @@ The following is an example of the contents of the decoded JWT token:
 **Payload:**
 ```json
 {
-  "sub": "",
+  "sub": "consumer-id", // Unique Consumer ID
+  "aud": "audience", // Only set if KONG_JWT_AUDIENCE env variable available
   "iss": "issuer", // Only set if KONG_JWT_ISSUER env variable available
-  "iat": 1550258274,
+  "iat": 1550258274, // Only set if KONG_JWT_ISSUER env variable available
   "exp": 1550258334, // 1 minute exp time,
-  "cid": "consumer-id",
-  "cun": "consumer-username",
-  "payloadhash": "...sha256 hash of request paload..."
+  "username": "consumer-username", // Consumer USername
+  "payloadhash": "...sha256 hash of request payload..."
 }
 ```
 
@@ -62,7 +62,7 @@ env KONG_SSL_CERT_DER;
 ```
 
 ### JWT Issuer
-JWT Issuer allows for the `iss` field to be set within the `JWT` token.
+[JWT Issuer](https://tools.ietf.org/html/rfc7519#section-4.1.1) allows for the `iss` field to be set within the `JWT` token.
 
 If not already set, these can be done so as follows:
 ```
@@ -73,6 +73,21 @@ To make the environment variable accessible, add the following to _nginx.conf_:
 ```
 env KONG_JWT_ISSUER;
 ```
+
+### JWT Audience
+[JWT Audience](https://tools.ietf.org/html/rfc7519#section-4.1.3) allows for the `aud` field to be set within the `JWT` token.
+
+If not already set, these can be done so as follows:
+```
+$ export KONG_JWT_AUDIENCE="audience"
+```
+
+To make the environment variable accessible, add the following to _nginx.conf_:
+```
+env KONG_JWT_AUDIENCE;
+```
+
+More information about JWT claims can be found [here](https://tools.ietf.org/html/rfc7519#section-4)
 
 ## Maintainers
 [jeremyjpj0916](https://github.com/jeremyjpj0916)  
