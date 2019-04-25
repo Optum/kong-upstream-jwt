@@ -42,7 +42,7 @@ The following is an example of the contents of the decoded JWT token:
   "iat": 1550258274, // Only set if KONG_JWT_ISSUER env variable available
   "exp": 1550258334, // 1 minute exp time,
   "jti": "d4f10edb-c4f0-47d3-b7e0-90a30a885a0b", // Unique to every request - UUID
-  "username": "consumer-username", // Consumer USername
+  "username": "consumer-username", // Consumer Username
   "payloadhash": "...sha256 hash of request payload..."
 }
 ```
@@ -79,7 +79,7 @@ env KONG_SSL_CERT_DER;
 
 **Add the following to _nginx.conf_:**
 ```
-jwt_issuer = "issuer"
+issuer = "issuer"
 ```
 
 ### JWT Audience
@@ -87,7 +87,7 @@ jwt_issuer = "issuer"
 
 **Add the following to _nginx.conf_:**
 ```
-jwt_audience = "audience"
+audience = "audience"
 ```
 
 More information about JWT claims can be found [here](https://tools.ietf.org/html/rfc7519#section-4)
