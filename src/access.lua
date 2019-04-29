@@ -8,6 +8,8 @@ local openssl_digest = require "openssl.digest"
 local openssl_pkey = require "openssl.pkey"
 local table_concat = table.concat
 local encode_base64 = ngx.encode_base64
+local env_private_key_location = os.getenv("KONG_SSL_CERT_KEY")
+local env_public_key_location = os.getenv("KONG_SSL_CERT_DER")
 local utils = require "kong.tools.utils"
 local _M = {}
 
@@ -15,9 +17,8 @@ local _M = {}
 -- @param conf the kong configuration
 -- @return the private key location
 local function get_private_key_location(conf)
-  local location = os.getenv("KONG_SSL_CERT_KEY")
-  if location ~= nil then
-    return location
+  if env_private_key_location ~= nil then
+    return env_private_key_location
   end
   return conf.private_key_location
 end
@@ -26,9 +27,8 @@ end
 -- @param conf the kong configuration
 -- @return the public key location
 local function get_public_key_location(conf)
-  local location = os.getenv("KONG_SSL_CERT_DER")
-  if location ~= nil then
-    return location
+  if env_public_key_location ~= nil then
+    return env_public_key_location
   end
   return conf.public_key_location
 end
@@ -110,8 +110,10 @@ local function build_jwt_payload(conf, payload_hash)
     payload.iss = conf.issuer
   end
 
-  if conf.audience ~= nil then
-    payload.aud = conf.audience
+  if ngx.ctx.service ~= nil then
+    payload.aud = ngx.ctx.service
+  elseif kong.service ~= nil then
+    payload.aud = kong.service
   end
 
   local consumer = kong.client.get_consumer()

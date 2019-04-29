@@ -52,7 +52,7 @@ The following is an example of the contents of the decoded JWT token:
 ### Private and Public Keys
 The plugin requires that Kong's private key be accessible in order to sign the JWT. [We also include the x509 cert in the `x5c` JWT Header for use by API providers to validate the JWT](https://tools.ietf.org/html/rfc7515#section-4.1.6).
 
-**Add the following to _nginx.conf_:**
+**Add the following to `nginx.conf`:**
 ```
 private_key_location = "/path/to/kong/ssl/privatekey.key"
 public_key_location = "/path/to/kong/ssl/kongpublickey.cer"
@@ -77,17 +77,9 @@ env KONG_SSL_CERT_DER;
 ### JWT Issuer
 [JWT Issuer](https://tools.ietf.org/html/rfc7519#section-4.1.1) allows for the `iss` field to be set within the `JWT` token.
 
-**Add the following to _nginx.conf_:**
+**Add the following to `nginx.conf`:**
 ```
 issuer = "issuer"
-```
-
-### JWT Audience
-[JWT Audience](https://tools.ietf.org/html/rfc7519#section-4.1.3) allows for the `aud` field to be set within the `JWT` token.
-
-**Add the following to _nginx.conf_:**
-```
-audience = "audience"
 ```
 
 More information about JWT claims can be found [here](https://tools.ietf.org/html/rfc7519#section-4)
