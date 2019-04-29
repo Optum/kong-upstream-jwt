@@ -37,10 +37,10 @@ The following is an example of the contents of the decoded JWT token:
 ```json
 {
   "sub": "consumer-id", // Unique Consumer ID
-  "aud": "audience", // Only set if audience configuration variable available
+  "aud": "kong-service-name", // The Kong Service Name
   "iss": "issuer", // Only set if issuer configuration variable available
   "iat": 1550258274, // Only set if issuer configuration variable available
-  "exp": 1550258334, // 1 minute exp time,
+  "exp": 1550258334, // 1 minute exp time
   "jti": "d4f10edb-c4f0-47d3-b7e0-90a30a885a0b", // Unique to every request - UUID
   "username": "consumer-username", // Consumer Username
   "payloadhash": "...sha256 hash of request payload..."
