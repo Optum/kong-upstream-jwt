@@ -17,7 +17,7 @@ local _M = {}
 -- @param conf the kong configuration
 -- @return the private key location
 local function get_private_key_location(conf)
-  if env_private_key_location ~= nil then
+  if env_private_key_location then
     return env_private_key_location
   end
   return conf.private_key_location
@@ -27,7 +27,7 @@ end
 -- @param conf the kong configuration
 -- @return the public key location
 local function get_public_key_location(conf)
-  if env_public_key_location ~= nil then
+  if env_public_key_location then
     return env_public_key_location
   end
   return conf.public_key_location
@@ -62,12 +62,12 @@ local function get_kong_key(key, location)
   -- This will add a non expiring TTL on this cached value
   -- https://github.com/thibaultcha/lua-resty-mlcache/blob/master/README.md
   local pkey, err = singletons.cache:get(key, { ttl = 0 }, read_from_file, location)
-	
+
   if err then
     ngx.log(ngx.ERR, "Could not retrieve pkey: ", err)
     return
   end
-	
+
   return pkey
 end
 
@@ -105,27 +105,20 @@ local function build_jwt_payload(conf, payload_hash)
     payloadhash = payload_hash
   }
 
-  if conf.issuer ~= nil then
+  if conf.issuer then
     payload.iat = current_time
     payload.iss = conf.issuer
   end
 
-  if ngx.ctx.service ~= nil then
-    payload.aud = ngx.ctx.service
-  elseif kong.service ~= nil then
-    payload.aud = kong.service
+  if ngx.ctx.service then
+    payload.aud = ngx.ctx.service.name
   end
 
   local consumer = kong.client.get_consumer()
-
-  -- No need to proceed any further if we don't have a consumer
-  -- This is the case if we are not yet authenticated, or there is no consumer (external auth)
-  if consumer == nil then
-    return payload
+  if consumer then
+    payload.sub = consumer.username
+    payload.cid = consumer.id
   end
-
-  payload.sub = consumer.id
-  payload.username = consumer.username
 
   return payload
 end
@@ -136,7 +129,7 @@ local function build_payload_hash()
   ngx.req.read_body()
   local req_body  = ngx.req.get_body_data()
   local payload_digest = ""
-  if req_body ~= nil then
+  if req_body then
     local sha256 = resty_sha256:new()
     sha256:update(req_body)
     payload_digest = sha256:final()
