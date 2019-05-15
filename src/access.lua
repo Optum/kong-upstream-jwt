@@ -116,8 +116,8 @@ local function build_jwt_payload(conf, payload_hash)
 
   local consumer = kong.client.get_consumer()
   if consumer then
-    payload.sub = consumer.username
-    payload.cid = consumer.id
+    payload.consumerid = consumer.id
+    payload.consumername = consumer.username
   end
 
   return payload
