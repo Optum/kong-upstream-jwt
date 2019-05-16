@@ -57,7 +57,7 @@ The plugin requires that Kong's private key be accessible in order to sign the J
 
 More information about JWT claims can be found [here](https://tools.ietf.org/html/rfc7519#section-4)
 
-**Optional Plugin schema configurations: **
+**Optional Plugin schema configurations:**
 ```
 private_key_location = "/path/to/kong/ssl/privatekey.key"
 public_key_location = "/path/to/kong/ssl/kongpublickey.cer"
