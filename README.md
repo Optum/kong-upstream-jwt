@@ -21,10 +21,48 @@ $ cd /path/to/kong/plugins/kong-upstream-jwt
 $ luarocks make *.rockspec
 ```
 
-## Configuration
-The plugin requires that Kong's private key be accessible in order to sign the JWT. [We also include the x509 cert in the `x5c` JWT Header for use by API providers to validate the JWT](https://tools.ietf.org/html/rfc7515#section-4.1.6). We access these via Kong's overriding environment variables `KONG_SSL_CERT_KEY` for the private key as well as `KONG_SSL_CERT_DER` for the public key. The first contains the path to your .key file, the second specifies the path to your public key in DER format .cer file.
+## JWT Token
+The following is an example of the contents of the decoded JWT token:
 
-If not already set, these can be done so as follows:
+**Header:**
+```json
+{
+  "x5c": ["...der-encoded cert data..."],
+  "alg": "RS256",
+  "typ": "JWT"
+}
+```
+
+**Payload:**
+```json
+{
+  "aud": "kong-service-name", // The Kong Service Name
+  "iss": "issuer", // Only set if issuer configuration variable available
+  "iat": 1550258274, // Only set if issuer configuration variable available
+  "exp": 1550258334, // 1 minute exp time
+  "jti": "d4f10edb-c4f0-47d3-b7e0-90a30a885a0b", // Unique to every request - UUID
+  "consumername": "consumer-username", // Consumer Username
+  "consumerid": "consumer-id", // Consumer ID
+  "payloadhash": "...sha256 hash of request payload..."
+}
+```
+
+## Configuration
+
+### Private and Public Keys
+The plugin requires that Kong's private key be accessible in order to sign the JWT. [We also include the x509 cert in the `x5c` JWT Header for use by API providers to validate the JWT](https://tools.ietf.org/html/rfc7515#section-4.1.6).
+
+**Add the following to `nginx.conf`:**
+```
+private_key_location = "/path/to/kong/ssl/privatekey.key"
+public_key_location = "/path/to/kong/ssl/kongpublickey.cer"
+```
+The first contains the path to your .key file, the second specifies the path to your public key in DER format .cer file.
+
+#### Backwards Compatibility
+To maintain backwards compatibility, support for passing the key locations through environment variables is also available.  We access these via Kong's overriding environment variables `KONG_SSL_CERT_KEY` for the private key as well as `KONG_SSL_CERT_DER` for the public key.
+
+**If not already set, these can be done so as follows:**
 ```
 $ export KONG_SSL_CERT_KEY="/path/to/kong/ssl/privatekey.key"
 $ export KONG_SSL_CERT_DER="/path/to/kong/ssl/kongpublickey.cer"
@@ -35,6 +73,16 @@ $ export KONG_SSL_CERT_DER="/path/to/kong/ssl/kongpublickey.cer"
 env KONG_SSL_CERT_KEY;
 env KONG_SSL_CERT_DER;
 ```
+
+### JWT Issuer
+[JWT Issuer](https://tools.ietf.org/html/rfc7519#section-4.1.1) allows for the `iss` field to be set within the `JWT` token.
+
+**Add the following to `nginx.conf`:**
+```
+issuer = "issuer"
+```
+
+More information about JWT claims can be found [here](https://tools.ietf.org/html/rfc7519#section-4)
 
 ## Maintainers
 [jeremyjpj0916](https://github.com/jeremyjpj0916)  

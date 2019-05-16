@@ -2,15 +2,36 @@
 local resty_sha256 = require "resty.sha256"
 local str = require "resty.string"
 local singletons = require "kong.singletons"
-local public_key_der_location =  os.getenv("KONG_SSL_CERT_DER")
-local private_key_location =  os.getenv("KONG_SSL_CERT_KEY")
 local pl_file = require "pl.file"
 local json = require "cjson"
 local openssl_digest = require "openssl.digest"
 local openssl_pkey = require "openssl.pkey"
 local table_concat = table.concat
 local encode_base64 = ngx.encode_base64
+local env_private_key_location = os.getenv("KONG_SSL_CERT_KEY")
+local env_public_key_location = os.getenv("KONG_SSL_CERT_DER")
+local utils = require "kong.tools.utils"
 local _M = {}
+
+--- Get the private key location either from the environment or from configuration
+-- @param conf the kong configuration
+-- @return the private key location
+local function get_private_key_location(conf)
+  if env_private_key_location then
+    return env_private_key_location
+  end
+  return conf.private_key_location
+end
+
+--- Get the public key location either from the environment or from configuration
+-- @param conf the kong configuration
+-- @return the public key location
+local function get_public_key_location(conf)
+  if env_public_key_location then
+    return env_public_key_location
+  end
+  return conf.public_key_location
+end
 
 --- base 64 encoding
 -- @param input String to base64 encode
@@ -21,34 +42,50 @@ local function b64_encode(input)
   return result
 end
 
-local function readFromFile(file_location)
+--- Read contents of file from given location
+-- @param file_location the file location
+-- @return the file contents
+local function read_from_file(file_location)
   local content, err = pl_file.read(file_location)
   if not content then
     ngx.log(ngx.ERR, "Could not read file contents", err)
     return nil, err
   end
-
   return content
 end
 
-local function getKongKey(key, location)
+--- Get the Kong key either from cache or the given `location`
+-- @param key the cache key to lookup first
+-- @param location the location of the key file
+-- @return the key contents
+local function get_kong_key(key, location)
   -- This will add a non expiring TTL on this cached value
   -- https://github.com/thibaultcha/lua-resty-mlcache/blob/master/README.md
-  local pkey, err = singletons.cache:get(key, { ttl = 0 }, readFromFile, location)
-	
+  local pkey, err = singletons.cache:get(key, { ttl = 0 }, read_from_file, location)
+
   if err then
     ngx.log(ngx.ERR, "Could not retrieve pkey: ", err)
     return
   end
-	
+
   return pkey
 end
 
-local function encode_token(data, key)
-  local header = {typ = "JWT", alg = "RS256", x5c = {b64_encode(getKongKey("pubder",public_key_der_location))} }
+--- Base64 encode the JWT token
+-- @param payload the payload of the token
+-- @param key the key to sign the token with
+-- @return the encoded JWT token
+local function encode_jwt_token(conf, payload, key)
+  local header = {
+    typ = "JWT",
+    alg = "RS256",
+    x5c = {
+      b64_encode(get_kong_key("pubder", get_public_key_location(conf)))
+    }
+  }
   local segments = {
     b64_encode(json.encode(header)),
-    b64_encode(json.encode(data))
+    b64_encode(json.encode(payload))
   }
   local signing_input = table_concat(segments, ".")
   local signature = openssl_pkey.new(key):sign(openssl_digest.new("sha256"):update(signing_input))
@@ -56,26 +93,62 @@ local function encode_token(data, key)
   return table_concat(segments, ".")
 end
 
-local function add_jwt_header(conf)
-  local kong_pkey = getKongKey("pkey", private_key_location)
-  ngx.req.read_body()
-  local req_body  = ngx.req.get_body_data()
-  local digest_created = ""
-  if req_body ~= nil then
-    local sha256 = resty_sha256:new()
-    sha256:update(req_body)
-    digest_created = sha256:final()
+--- Build the JWT token payload based off the `payload_hash`
+-- @param conf the configuration
+-- @param payload_hash the payload hash
+-- @return the JWT payload (table)
+local function build_jwt_payload(conf, payload_hash)
+  local current_time = ngx.time() -- Much better performance improvement over os.time()
+  local payload = {
+    exp = current_time + 60,
+    jti = utils.uuid(),
+    payloadhash = payload_hash
+  }
+
+  if conf.issuer then
+    payload.iat = current_time
+    payload.iss = conf.issuer
   end
 
-  local payload = {
-        payloadhash = str.to_hex(digest_created),
-	exp = ngx.time() + 60 --much better performance improvement over os.time()
-  }
-		
-  local jwt = encode_token(payload, kong_pkey)
+  if ngx.ctx.service then
+    payload.aud = ngx.ctx.service.name
+  end
+
+  local consumer = kong.client.get_consumer()
+  if consumer then
+    payload.consumerid = consumer.id
+    payload.consumername = consumer.username
+  end
+
+  return payload
+end
+
+--- Build the payload hash
+-- @return SHA-256 hash of the request body data
+local function build_payload_hash()
+  ngx.req.read_body()
+  local req_body  = ngx.req.get_body_data()
+  local payload_digest = ""
+  if req_body then
+    local sha256 = resty_sha256:new()
+    sha256:update(req_body)
+    payload_digest = sha256:final()
+  end
+  return str.to_hex(payload_digest)
+end
+
+--- Add the JWT header to the reqeust
+-- @param conf the configuration
+local function add_jwt_header(conf)
+  local payload_hash = build_payload_hash()
+  local payload = build_jwt_payload(conf, payload_hash)
+  local kong_private_key = get_kong_key("pkey", get_private_key_location(conf))
+  local jwt = encode_jwt_token(conf, payload, kong_private_key)
   ngx.req.set_header("JWT", jwt)
 end
 
+--- Execute the script
+-- @param conf kong configuration
 function _M.execute(conf)
   add_jwt_header(conf)
 end
