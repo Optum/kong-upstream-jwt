@@ -52,10 +52,16 @@ The following is an example of the contents of the decoded JWT token:
 ### Private and Public Keys
 The plugin requires that Kong's private key be accessible in order to sign the JWT. [We also include the x509 cert in the `x5c` JWT Header for use by API providers to validate the JWT](https://tools.ietf.org/html/rfc7515#section-4.1.6).
 
-**Add the following to `nginx.conf`:**
+### JWT Issuer
+[JWT Issuer](https://tools.ietf.org/html/rfc7519#section-4.1.1) allows for the `iss` field to be set within the `JWT` token.
+
+More information about JWT claims can be found [here](https://tools.ietf.org/html/rfc7519#section-4)
+
+**Optional Plugin schema configurations: **
 ```
 private_key_location = "/path/to/kong/ssl/privatekey.key"
 public_key_location = "/path/to/kong/ssl/kongpublickey.cer"
+issuer = "issuer"
 ```
 The first contains the path to your .key file, the second specifies the path to your public key in DER format .cer file.
 
@@ -73,16 +79,6 @@ $ export KONG_SSL_CERT_DER="/path/to/kong/ssl/kongpublickey.cer"
 env KONG_SSL_CERT_KEY;
 env KONG_SSL_CERT_DER;
 ```
-
-### JWT Issuer
-[JWT Issuer](https://tools.ietf.org/html/rfc7519#section-4.1.1) allows for the `iss` field to be set within the `JWT` token.
-
-**Add the following to `nginx.conf`:**
-```
-issuer = "issuer"
-```
-
-More information about JWT claims can be found [here](https://tools.ietf.org/html/rfc7519#section-4)
 
 ## Maintainers
 [jeremyjpj0916](https://github.com/jeremyjpj0916)  
