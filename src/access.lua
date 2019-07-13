@@ -83,6 +83,9 @@ local function encode_jwt_token(conf, payload, key)
       b64_encode(get_kong_key("pubder", get_public_key_location(conf)))
     }
   }
+  if (conf.key_id) then
+    header.kid = conf.key_id
+  end
   local segments = {
     b64_encode(json.encode(header)),
     b64_encode(json.encode(payload))
