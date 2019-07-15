@@ -83,6 +83,9 @@ local function encode_jwt_token(conf, payload, key)
       b64_encode(get_kong_key("pubder", get_public_key_location(conf)))
     }
   }
+  if (conf.key_id) then
+    header.kid = conf.key_id
+  end
   local segments = {
     b64_encode(json.encode(header)),
     b64_encode(json.encode(payload))
@@ -137,14 +140,22 @@ local function build_payload_hash()
   return str.to_hex(payload_digest)
 end
 
---- Add the JWT header to the reqeust
+local function build_header_value(conf, jwt)
+  if (conf.include_credential_type == true) then
+    return "Bearer " .. jwt
+  else
+    return jwt
+  end
+end
+
+--- Add the JWT header to the request
 -- @param conf the configuration
 local function add_jwt_header(conf)
   local payload_hash = build_payload_hash()
   local payload = build_jwt_payload(conf, payload_hash)
   local kong_private_key = get_kong_key("pkey", get_private_key_location(conf))
   local jwt = encode_jwt_token(conf, payload, kong_private_key)
-  ngx.req.set_header("JWT", jwt)
+  ngx.req.set_header(conf.header, build_header_value(conf, jwt))
 end
 
 --- Execute the script
