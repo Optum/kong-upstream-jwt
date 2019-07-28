@@ -83,7 +83,7 @@ local function encode_jwt_token(conf, payload, key)
       b64_encode(get_kong_key("pubder", get_public_key_location(conf)))
     }
   }
-  if (conf.key_id) then
+  if conf.key_id then
     header.kid = conf.key_id
   end
   local segments = {
@@ -141,7 +141,7 @@ local function build_payload_hash()
 end
 
 local function build_header_value(conf, jwt)
-  if (conf.include_credential_type == true) then
+  if conf.include_credential_type then
     return "Bearer " .. jwt
   else
     return jwt
