@@ -1,6 +1,6 @@
 # Kong Upstream JWT Plugin
 ## Overview
-This plugin will add a signed JWT into the HTTP Header `JWT` of proxied requests through the Kong gateway. The purpose of this, is to provide means of _Authentication_, _Authorization_ and _Non-Repudiation_ to API providers (APIs for which Kong is a gateway).
+This plugin will add a signed JWT into the HTTP Header `JWT` or `config.header` of proxied requests through the Kong gateway. The purpose of this, is to provide means of _Authentication_, _Authorization_ and _Non-Repudiation_ to API providers (APIs for which Kong is a gateway).
 
 In short, API Providers need a means of cryptographically validating that requests they receive were A. proxied by Kong, and B. not tampered with during transmission from Kong -> API Provider. This token accomplishes both as follows:
 1. **Authentication** & **Authorization** - Provided by means of JWT signature validation. The API Provider will validate the signature on the JWT token (which is generating using Kong's RSA x509 private key), using Kong's public key. This public key can be maintained in a keystore, or sent with the token - provided API providers validate the signature chain against their truststore.
@@ -29,7 +29,8 @@ The following is an example of the contents of the decoded JWT token:
 {
   "x5c": ["...der-encoded cert data..."],
   "alg": "RS256",
-  "typ": "JWT"
+  "typ": "JWT",
+  "kid": "..conf.key_id.." // Only present if conf.key_id configuration variable set
 }
 ```
 
@@ -62,7 +63,11 @@ More information about JWT claims can be found [here](https://tools.ietf.org/htm
 private_key_location = "/path/to/kong/ssl/privatekey.key"
 public_key_location = "/path/to/kong/ssl/kongpublickey.cer"
 issuer = "issuer"
+key_id = "keyId"
+header = "JWT" //If you want to set the header key to something other than JWT
+include_credential_type = false //Controls "Bearer " + JWT or just JWT in header
 ```
+
 The first contains the path to your .key file, the second specifies the path to your public key in DER format .cer file.
 
 #### Backwards Compatibility
