@@ -7,6 +7,6 @@ function KongUpstreamJWTHandler:access(conf)
 end
 
 KongUpstreamJWTHandler.PRIORITY = 999 -- This plugin needs to run after auth plugins so it has access to `ngx.ctx.authenticated_consumer`
-KongUpstreamJWTHandler.VERSION = "1.0"
+KongUpstreamJWTHandler.VERSION = "1.1"
 
 return KongUpstreamJWTHandler
