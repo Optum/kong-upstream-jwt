@@ -91,7 +91,10 @@ local function encode_jwt_token(conf, payload, key)
     b64_encode(json.encode(payload))
   }
   local signing_input = table_concat(segments, ".")
-  local signature = openssl_pkey.new(key):sign(openssl_digest.new("sha256"):update(signing_input))
+  local digest = openssl_digest.new("sha256")
+  assert(digest:update(signing_input))
+  local signature = assert(openssl_pkey.new(key):sign(digest))
+  -- local signature = openssl_pkey.new(key):sign(openssl_digest.new("sha256"):update(signing_input))
   segments[#segments+1] = b64_encode(signature)
   return table_concat(segments, ".")
 end
