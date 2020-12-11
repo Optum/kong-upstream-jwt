@@ -16,8 +16,7 @@ dependencies = {}
 build = {
    type = "builtin",
    modules = {
-      ["kong.plugins.kong-upstream-jwt.access"] = "kong/plugins/upstream-jwt/access.lua",
-      ["kong.plugins.kong-upstream-jwt.handler"]  = "kong/plugins/upstream-jwt/handler.lua",
-      ["kong.plugins.kong-upstream-jwt.schema"]= "kong/plugins/upstream-jwt/schema.lua"
+      ["kong.plugins.kong-upstream-jwt.handler"] = "kong/plugins/upstream-jwt/handler.lua",
+      ["kong.plugins.kong-upstream-jwt.schema"] = "kong/plugins/upstream-jwt/schema.lua"
    }
 }
