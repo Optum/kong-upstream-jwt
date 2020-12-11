@@ -11,7 +11,12 @@ local encode_base64 = ngx.encode_base64
 local env_private_key_location = os.getenv("KONG_SSL_CERT_KEY")
 local env_public_key_location = os.getenv("KONG_SSL_CERT_DER")
 local utils = require "kong.tools.utils"
-local _M = {}
+
+
+local KongUpstreamJWTHandler = {
+  PRIORITY = 999, -- This plugin needs to run after auth plugins so it has access to `ngx.ctx.authenticated_consumer`
+  VERSION = "1.2",
+}
 
 --- Get the private key location either from the environment or from configuration
 -- @param conf the kong configuration
@@ -163,8 +168,8 @@ end
 
 --- Execute the script
 -- @param conf kong configuration
-function _M.execute(conf)
+function KongUpstreamJWTHandler:access(conf)
   add_jwt_header(conf)
 end
 
-return _M
+return KongUpstreamJWTHandler
