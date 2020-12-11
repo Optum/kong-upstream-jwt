@@ -1,0 +1,4 @@
+# servroot typically is the Kong working directory for tests
+servroot
+# exclude generated packed rocks
+*.rock
