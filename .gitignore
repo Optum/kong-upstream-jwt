@@ -2,3 +2,6 @@
 servroot
 # exclude generated packed rocks
 *.rock
+
+#exclude test certs
+*.pem
