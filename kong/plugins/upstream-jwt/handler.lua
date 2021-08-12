@@ -11,7 +11,12 @@ local encode_base64 = ngx.encode_base64
 local env_private_key_location = os.getenv("KONG_SSL_CERT_KEY")
 local env_public_key_location = os.getenv("KONG_SSL_CERT_DER")
 local utils = require "kong.tools.utils"
-local _M = {}
+
+
+local KongUpstreamJWTHandler = {
+  PRIORITY = 999, -- This plugin needs to run after auth plugins so it has access to `ngx.ctx.authenticated_consumer`
+  VERSION = "1.2",
+}
 
 --- Get the private key location either from the environment or from configuration
 -- @param conf the kong configuration
@@ -20,7 +25,7 @@ local function get_private_key_location(conf)
   if env_private_key_location then
     return env_private_key_location
   end
-  return conf.private_key_location
+  return conf.private_key_location, "private key location not provided"
 end
 
 --- Get the public key location either from the environment or from configuration
@@ -30,7 +35,7 @@ local function get_public_key_location(conf)
   if env_public_key_location then
     return env_public_key_location
   end
-  return conf.public_key_location
+  return conf.public_key_location, "public key location not provided"
 end
 
 --- base 64 encoding
@@ -80,7 +85,7 @@ local function encode_jwt_token(conf, payload, key)
     typ = "JWT",
     alg = "RS256",
     x5c = {
-      b64_encode(get_kong_key("pubder", get_public_key_location(conf)))
+      b64_encode(get_kong_key("pubder", assert(get_public_key_location(conf))))
     }
   }
   if conf.key_id then
@@ -156,15 +161,15 @@ end
 local function add_jwt_header(conf)
   local payload_hash = build_payload_hash()
   local payload = build_jwt_payload(conf, payload_hash)
-  local kong_private_key = get_kong_key("pkey", get_private_key_location(conf))
+  local kong_private_key = get_kong_key("pkey", assert(get_private_key_location(conf)))
   local jwt = encode_jwt_token(conf, payload, kong_private_key)
   ngx.req.set_header(conf.header, build_header_value(conf, jwt))
 end
 
 --- Execute the script
 -- @param conf kong configuration
-function _M.execute(conf)
+function KongUpstreamJWTHandler:access(conf)
   add_jwt_header(conf)
 end
 
-return _M
+return KongUpstreamJWTHandler

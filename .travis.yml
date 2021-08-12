@@ -1,0 +1,33 @@
+dist: bionic
+
+jobs:
+  include:
+  - name: Kong CE 1.4.x
+    env: KONG_VERSION=1.4.x
+  - name: Kong CE 1.5.x
+    env: KONG_VERSION=1.5.x
+  - name: Kong CE 2.0.x
+    env: KONG_VERSION=2.0.x
+  - name: Kong CE 2.1.x
+    env: KONG_VERSION=2.1.x
+  - name: Kong CE 2.2.x
+    env: KONG_VERSION=2.2.x
+  #- name: Nightly CE-master
+  #  env: KONG_VERSION=nightly POSTGRES=latest CASSANDRA=latest
+
+install:
+- git clone --single-branch https://github.com/Kong/kong-pongo ../kong-pongo
+- "../kong-pongo/pongo.sh up"
+- "../kong-pongo/pongo.sh build"
+
+script:
+- "../kong-pongo/pongo.sh lint"
+- "../kong-pongo/pongo.sh run"
+
+# notifications:
+#   slack:
+#     if: branch = master AND type != pull_request
+#     on_success: change
+#     on_failure: always
+#     rooms:
+#       secure: HdpUy77gMJEapyYOnKBqYeWFALG771KnLzUzbM5Et8br7RNrUTvA4fZ+paoLnIWU+0Sb+8A8/tRxBvPpxnVJFYZReQT4oBhX+wVTYbVr4i+UKfIDrU4DJ2nj3lHTa5t/dX7WZttBwFB8fuVugceWVF95DZCC9ll38d646+27wYydamu2hgCBs+PI4+J6msmFMC0T2vMr3A+B9reyiWQ+KG+E5U7mcmgMZ/xh10pBinPA7nXe0N4z50hR/ooHukFzMHDCyfVIKox9z9WQzS3SUI+Wxj6dts+dDVmVfTlM4XUM9e2MMDkBZgvQIedrjaR5pgdTl2xTWrMuMeeKbuimGa7FGD5rirgBg5gkP9LG1aSzJLP0lp4ldogTX+9VVaDE5N+ACKcR/10U3CskJYuOXx4cp0ub+TDIfe34NxgBe9PmTmJbTtRBgZ0sNVfZqfCmDYeCMTTyA+zug+XkPI+lQ56QqgFg4Hxohr+EsCQcQzA2YI9QUw0fIZPKyWQ91neE/ytF4xvNM8YI0yuLLgRYbbcvu6Tn4q0rwJkIdjh9eExD9ddsgTmENVN0KEYMj/Rk3WUJi6k7MDcSmxaBLC9REObgddyGM4hgXtbLGBAnJaDBHTaDBetTmrae2PAiZs478P4l5X1TzlZZMYVLlpVukpDJPzH6NBXZgiYjkyFipVc=
