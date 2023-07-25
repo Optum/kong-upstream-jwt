@@ -1,7 +1,7 @@
 -- © Optum 2018
 local resty_sha256 = require "resty.sha256"
 local str = require "resty.string"
-local singletons = require "kong.singletons"
+local kong = kong
 local pl_file = require "pl.file"
 local json = require "cjson"
 local openssl_digest = require "resty.openssl.digest"
@@ -61,7 +61,7 @@ end
 local function get_kong_key(key, location)
   -- This will add a non expiring TTL on this cached value
   -- https://github.com/thibaultcha/lua-resty-mlcache/blob/master/README.md
-  local pkey, err = singletons.cache:get(key, { ttl = 0 }, read_from_file, location)
+  local pkey, err = kong.cache:get(key, { ttl = 0 }, read_from_file, location)
 
   if err then
     ngx.log(ngx.ERR, "Could not retrieve pkey: ", err)
