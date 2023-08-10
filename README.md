@@ -7,7 +7,7 @@ In short, API Providers need a means of cryptographically validating that reques
 2. **Non-Repudiation** - SHA256 is used to hash the body of the HTTP Request Body, and the resulting digest is included in the `payloadhash` element of the JWT body. API Providers will take the SHA256 hash of the HTTP Request Body, and compare the digest to that found in the JWT. If they are identical, the request remained intact during transmission.
 
 ## Supported Kong Releases
-Kong >= 1.0.x 
+Kong >= 3.x
 
 ## Installation
 Recommended:
